@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThickSSA - Thick Client Static Security Analyzer</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glow-bg"></div>
+
+    <header>
+        <div class="logo-container">
+            <h1>ThickSSA</h1>
+            <span class="logo-tag">Thick Client Static Security Analyzer</span>
+        </div>
+        <button id="history-toggle-btn" class="btn btn-history-toggle" title="View Scan History">
+            🕓 Scan History
+        </button>
+    </header>
+
+    <!-- Scan History Side Panel -->
+    <div id="history-overlay" class="history-overlay" style="display:none;"></div>
+    <aside id="history-panel" class="history-panel" aria-hidden="true">
+        <div class="history-panel-header">
+            <h3>📁 Scan History</h3>
+            <button id="history-close-btn" class="history-close-btn" title="Close">✕</button>
+        </div>
+        <div id="history-list" class="history-list">
+            <p class="history-empty">Loading scans...</p>
+        </div>
+    </aside>
+
+    <main class="container">
+        <!-- 1. DIRECT PATH AUDITOR SECTION -->
+        <section id="upload-section" class="card fade-in">
+            <h2>Direct System Application Audit</h2>
+            <p class="subtitle">Provide paths of the target executable (Windows PE or Linux ELF) and its installation directory on this machine to perform security checks.</p>
+            
+            <div class="direct-inputs-container" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div class="input-group-local" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <label for="exe-path-input" style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Target Executable File Path — Windows (.exe/.dll) or Linux (ELF) (Mandatory)</label>
+                    <div style="display: flex; gap: 0.75rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; align-items: center;">
+                        <span style="font-size: 1.5rem; flex-shrink: 0;">🖥️</span>
+                        <input type="text" id="exe-path-input" placeholder="e.g. C:\Program Files\App\app.exe  or  /opt/myapp/myapp" style="flex-grow: 1; background: transparent; border: none; outline: none; color: var(--text-primary); font-family: inherit; font-size: 0.95rem;">
+                    </div>
+                </div>
+
+                <div class="input-group-local" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <label for="app-dir-input" style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Application Installation Directory (Mandatory)</label>
+                    <div style="display: flex; gap: 0.75rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; align-items: center;">
+                        <span style="font-size: 1.5rem; flex-shrink: 0;">📁</span>
+                        <input type="text" id="app-dir-input" placeholder="e.g. C:\Program Files\MyApplication  or  /opt/myapp/" style="flex-grow: 1; background: transparent; border: none; outline: none; color: var(--text-primary); font-family: inherit; font-size: 0.95rem;">
+                    </div>
+                </div>
+
+                <div style="margin-top: 0.5rem;">
+                    <button id="start-audit-btn" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1rem; border-radius: 10px;">
+                        🔍 Start Thick Client Audit
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. RUNNING SCAN SECTION -->
+        <section id="scan-running-section" class="card fade-in" style="display: none;">
+            <div class="scan-status-header">
+                <h2>Analysis in Progress</h2>
+                <div class="spinner"></div>
+            </div>
+            <p id="current-scan-file" class="subtitle">Scanning app.exe...</p>
+            
+            <!-- Terminal Log Output -->
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <div class="terminal-buttons">
+                        <span class="term-btn close"></span>
+                        <span class="term-btn min"></span>
+                        <span class="term-btn max"></span>
+                    </div>
+                    <span class="terminal-title">bash - thickssa-analyzer --static</span>
+                </div>
+                <div id="terminal-log" class="terminal-body">
+                    <!-- Logs stream in dynamically here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. RESULTS DASHBOARD -->
+        <section id="results-section" class="fade-in" style="display: none;">
+            <!-- Top Dashboard Panels -->
+            <div class="dashboard-grid">
+                <!-- Metainfo Card -->
+                <div class="card info-card">
+                    <h3>Target Details</h3>
+                    <div class="info-table">
+                        <div class="info-row">
+                            <span class="info-label">File:</span>
+                            <span id="meta-filename" class="info-value">app.exe</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Platform:</span>
+                            <span id="meta-platform" class="info-value badge pe">Windows PE</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Package ID:</span>
+                            <span id="meta-package-id" class="info-value">com.example.app</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">File Size:</span>
+                            <span id="meta-filesize" class="info-value">42.5 MB</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Scan Time:</span>
+                            <span id="meta-timestamp" class="info-value">2026-06-06 23:45:01</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Density Chart Card -->
+                <div class="card score-card">
+                    <h3>Vulnerabilities Summary</h3>
+                    <div class="severity-summary-container">
+                        <div class="severity-stat critical">
+                            <span class="stat-num" id="stat-critical">0</span>
+                            <span class="stat-label">Critical</span>
+                        </div>
+                        <div class="severity-stat high">
+                            <span class="stat-num" id="stat-high">0</span>
+                            <span class="stat-label">High</span>
+                        </div>
+                        <div class="severity-stat medium">
+                            <span class="stat-num" id="stat-medium">0</span>
+                            <span class="stat-label">Medium</span>
+                        </div>
+                        <div class="severity-stat low">
+                            <span class="stat-num" id="stat-low">0</span>
+                            <span class="stat-label">Low</span>
+                        </div>
+                        <div class="severity-stat info">
+                            <span class="stat-num" id="stat-info">0</span>
+                            <span class="stat-label">Info</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Card -->
+                <div class="card actions-card">
+                    <h3>Export Assessment</h3>
+                    <p class="export-description">Download comprehensive reports for integration into client assessments.</p>
+                    <div class="btn-group">
+                        <button id="download-pdf-btn" class="btn btn-pdf">
+                            <span>📄</span> Export PDF Summary
+                        </button>
+                        <button id="download-excel-btn" class="btn btn-excel">
+                            <span>📊</span> Export Excel Checklist
+                        </button>
+                        <button id="re-scan-btn" class="btn btn-secondary">
+                            <span>🔄</span> Scan Another File
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- App Intelligence Details -->
+            <div class="card app-intelligence-card" id="app-intelligence-card" style="margin-top: 20px; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="document.getElementById('intelligence-body').style.display = document.getElementById('intelligence-body').style.display === 'none' ? 'block' : 'none';">
+                    <h3>🔍 Application Intelligence & Metadata</h3>
+                    <span style="font-size: 0.8em; opacity: 0.7;">(Click to expand/collapse)</span>
+                </div>
+                <div id="intelligence-body" style="display: none; margin-top: 15px;">
+                    <div class="info-table" id="intelligence-content">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Findings Details Grid -->
+            <div class="findings-container">
+                <div class="findings-header">
+                    <h2>Identified Vulnerabilities</h2>
+                    <div class="filter-controls">
+                        <button class="filter-btn active" data-severity="all">All</button>
+                        <button class="filter-btn" data-severity="critical">Critical</button>
+                        <button class="filter-btn" data-severity="high">High</button>
+                        <button class="filter-btn" data-severity="medium">Medium</button>
+                        <button class="filter-btn" data-severity="low">Low</button>
+                    </div>
+                </div>
+
+                <!-- Findings List Accordion -->
+                <div id="findings-list" class="findings-list">
+                    <!-- Findings inject here -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- HTML5 Canvas Screenshot Generator Container (hidden) -->
+    <canvas id="screenshot-canvas" style="display: none;"></canvas>
+
+    <footer id="app-footer">
+        <p id="app-footer-text">ThickSSA v1.0.0 &copy; 2026. Made with ❤️ by <b id="author-credit">Raj Doshi (rajdoshi01)</b> for thick client security penetration testing.</p>
+    </footer>
+    
+    <!-- Scripts -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

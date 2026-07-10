@@ -1,0 +1,5 @@
+openpyxl>=3.0.0
+reportlab>=3.6.0
+cryptography>=41.0.0
+pyelftools>=0.30
+pefile>=2023.2.7
